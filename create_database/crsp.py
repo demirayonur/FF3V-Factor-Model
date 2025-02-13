@@ -51,9 +51,7 @@ class CRSP:
             df (pd.DataFrame): DataFrame containing processed CRSP data. (initially null)
     """
 
-    def __init__(self,
-                 wrds: sqlalchemy.engine.base.Engine):
-
+    def __init__(self, wrds: sqlalchemy.engine.base.Engine):
         """
             Initializes the CRSP class with a WRDS database connection.
 
@@ -69,9 +67,7 @@ class CRSP:
         self.wrds = wrds
         self.df = None
 
-    def set_data(self,
-                 start_date: Union[datetime, str],
-                 final_date: Union[datetime, str]) -> None:
+    def set_data(self, start_date: Union[datetime, str], final_date: Union[datetime, str]) -> None:
         """
             Fetches CRSP data, classifies stocks by size, computes momentum and volatility, and links to Compustat.
 
@@ -79,6 +75,11 @@ class CRSP:
                 start_date (Union[datetime, str]): The start date of the dataset.
                 final_date (Union[datetime, str]): The end date of the dataset.
         """
+
+        start_date = convert_to_datetime(start_date, "start_date")
+        final_date = convert_to_datetime(final_date, "final_date")
+        if final_date < start_date:
+            raise ValueError("Final_date cannot be earlier than start_date.")
 
         self.set_raw_data(start_date, final_date)
         self.create_market_cap_column()
@@ -88,52 +89,40 @@ class CRSP:
         self.classify_for_size()
         self.get_compustat_merge_links()
 
-        desired_columns = ['permno', 'gvkey', 'exchange', 'industry', 'date', 'size_category', 'mktcap', 'ret_excess', 'momentum', 'volatility']
+        desired_columns = ['permno', 'gvkey', 'exchange', 'industry', 'date', 'size_category', 'mktcap', 'ret_excess',
+                           'momentum', 'volatility']
         self.df = self.df[desired_columns]
 
-    def set_raw_data(self,
-                 start_date: Union[datetime, str],
-                 final_date: Union[datetime, str]) -> None:
+    def set_raw_data(self, start_date: datetime, final_date: datetime) -> None:
         """
-            Fetches and processes monthly CRSP data, including market cap calculation and excess return computation.
+            Fetches and processes monthly raw CRSP data
 
             Args:
-                start_date (Union[datetime, str]): Start date for data retrieval.
-                final_date (Union[datetime, str]): End date for data retrieval.
+                start_date (datetime): Start date for data retrieval.
+                final_date (datetime): Final date for data retrieval.
         """
-
-        # Convert both dates
-        start_date = convert_to_datetime(start_date, "start_date")
-        final_date = convert_to_datetime(final_date, "final_date")
-
-        # Ensure final_date is not earlier than start_date
-        if final_date < start_date:
-            raise ValueError("Final_date cannot be earlier than start_date.")
 
         query = get_crsp_query(start_date=start_date, final_date=final_date)
         self.df = pd.read_sql_query(sql=query, con=self.wrds, dtype={"permno": int, "siccd": int}, parse_dates={"date"})
-        self.df = self.df.assign(shrout=lambda x: x["shrout"] * 1000)  # Convert shares to actual numbers
+        self.df['shrout'] *= 1000  # Convert shares to actual numbers
 
         change_crsp_exchange_codes(self.df)
         change_crsp_industry_codes(self.df)
 
-    def create_market_cap_column(self):
+    def create_market_cap_column(self) -> None:
         """Creates Market Cap Column."""
 
-        self.df = self.df.assign(mktcap=lambda x: x["shrout"] * x["altprc"] / 1000000)
+        self.df['mktcap'] = self.df['shrout']  * self.df['altprc'] / 1e6  # express it in unit of millions
         self.df = self.df.assign(mktcap=lambda x: x["mktcap"].replace(0, np.nan))  # 0 market cap is a null value!
 
-    def create_excess_return_column(self,
-                                    start_date: Union[datetime, str],
-                                    final_date: Union[datetime, str]
-                                    ):
+    def create_excess_return_column(self, start_date: datetime, final_date: datetime) -> None:
         """"Creates excess return column."""
 
         ff = FamaFrench(ff_version=3, data_freq='M')
         factors_ff3_monthly = ff.get_data(start_date=start_date, final_date=final_date)
         self.df = self.df.merge(factors_ff3_monthly, how="left", on="date")
-        self.df = self.df.assign(ret_excess=lambda x: x["ret"] - x["rf"]).drop(columns=["rf"])
-        self.df = self.df.dropna(subset=["ret_excess", "mktcap"])
+        self.df['ret_excess'] = self.df['ret'] - self.df['rf']
+        self.df = self.df.dropna(subset=["ret_excess", "mktcap"])  # excess returns and market caps are essential
 
     def classify_for_size(self):
         """Categorizes stocks into Large, Small, and Micro-cap based on NYSE market cap percentiles."""
@@ -171,7 +160,6 @@ class CRSP:
         """Merges CRSP data with Compustat using CCM linking table."""
 
         ccm_linking_table_query = get_ccm_linking_table_query()
-
         ccm_linking_table = pd.read_sql_query(sql=ccm_linking_table_query, con=self.wrds,
                                               dtype={"permno": int, "gvkey": str}, parse_dates={"linkdt", "linkenddt"})
 
@@ -182,9 +170,7 @@ class CRSP:
 
         self.df = self.df.merge(ccm_links, how="left", on=["permno", "date"])
 
-    def create_volatility_column(self,
-                                 start_date: Union[datetime, str],
-                                 final_date: Union[datetime, str]):
+    def create_volatility_column(self, start_date: datetime, final_date: datetime):
         """
             Computes rolling volatility using daily excess returns over a 60-day window.
 
@@ -196,7 +182,8 @@ class CRSP:
             ff = FamaFrench(ff_version=3, data_freq='D')
             factors_ff3_daily = ff.get_data(start_date=start_date, final_date=final_date)
 
-            permnos = pd.read_sql(sql="SELECT DISTINCT permno FROM crsp.stksecurityinfohist", con=self.wrds, dtype={"permno": int})
+            permnos = pd.read_sql(sql="SELECT DISTINCT permno FROM crsp.stksecurityinfohist", con=self.wrds,
+                                  dtype={"permno": int})
             permnos = list(permnos["permno"].astype(str))
             batch_size = 500
             batches = np.ceil(len(permnos) / batch_size).astype(int)
@@ -232,12 +219,10 @@ class CRSP:
             sub_df["volatility"] = sub_df["ret_excess"].shift(1).rolling(window=60, min_periods=20).std()
             return sub_df
 
-
         df_daily = df_daily.groupby("permno", group_keys=False).apply(compute_vol)
         self.df = self.df.merge(df_daily[["permno", "date", "volatility"]], on=["permno", "date"], how="left")
 
-    def write_to_sql(self,
-                     db_con: sqlite3.Connection):
+    def write_to_sql(self, db_con: sqlite3.Connection):
         """Writes the latest form of the dataframe to the given database as a table"""
 
         self.df.to_sql(name="crsp", con=db_con, if_exists="replace", index=False)
