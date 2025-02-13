@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Union
 
 import pandas_datareader as pdr
-import pandas as pd
+import sqlite3
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -37,8 +37,7 @@ class CPI:
         Example:
         --------
         >>> cpi_data = CPI(start_date="2020-01-01", final_date="2023-12-31")
-        >>> df = cpi_data.get_data(normalize=True)
-        >>> print(df.head())
+        >>> cpi_data.set_data(normalize=True)
 
         Notes:
         ------
@@ -73,15 +72,11 @@ class CPI:
         """
         self.start_date = convert_to_datetime(start_date, "start_date")
         self.final_date = convert_to_datetime(final_date, "final_date")
-
-        # Ensure final_date is not earlier than start_date
         if self.final_date < self.start_date:
             raise ValueError("final_date cannot be earlier than start_date.")
+        self.df = None
 
-    def get_data(self,
-                 normalize: bool = True,
-                 output_log: bool = False) -> pd.DataFrame:
-
+    def set_data(self, normalize: bool = True):
         """
             Fetches CPI create_database from FRED for the specified date range.
 
@@ -95,21 +90,10 @@ class CPI:
                 If `True`, normalizes the CPI values by dividing each value by
                 the last recorded CPI value in the dataset.
 
-            output_log : bool, optional (default=False)
-                If `True`, prints a log message indicating the create_database retrieval parameters
-
-            Returns:
-            --------
-            pd.DataFrame
-                A DataFrame containing the retrieved CPI create_database with the following columns:
-                - **date**: The date of the CPI record.
-                - **cpi**: The Consumer Price Index value (normalized if `normalize=True`).
-
             Example:
             --------
             >>> cpi_data = CPI(start_date="2020-01-01", final_date="2023-12-31")
-            >>> df = cpi_data.get_data(normalize=True)
-            >>> print(df.head())
+            >>> cpi_data.set_data(normalize=True)
 
             Notes:
             ------
@@ -117,18 +101,26 @@ class CPI:
             - The CPIAUCNS key (Consumer Price Index for All Urban Consumers) is used.
             - Normalization allows easy comparison of relative changes over time.
         """
-        if output_log:
-            print(f"Retrieving CPI create_database from {self.start_date} to {self.final_date}..")
-        cpi_monthly = pdr.DataReader(name="CPIAUCNS", data_source="fred", start=self.start_date, end=self.final_date)
-        cpi_monthly.reset_index(names="date", inplace=True)
-        cpi_monthly.rename(columns={"CPIAUCNS": "cpi"}, inplace=True)
+
+        self.df = pdr.DataReader(name="CPIAUCNS", data_source="fred", start=self.start_date, end=self.final_date)
+        self.df.reset_index(names="date", inplace=True)
+        self.df.rename(columns={"CPIAUCNS": "cpi"}, inplace=True)
 
         if normalize:
-            cpi_monthly = cpi_monthly.assign(cpi=lambda x: x["cpi"]/x["cpi"].iloc[-1])
-            if output_log:
-                print('Normalized CPI data retrieved from FRED.')
-        else:
-            if output_log:
-                print('No normalized CPI data retrieved from FRED.')
+            self.df = self.df.assign(cpi=lambda x: x["cpi"]/x["cpi"].iloc[-1])
 
-        return cpi_monthly
+    def write_to_sql(self, db_con: sqlite3.Connection):
+        """
+            Writes the processed CPI data to an SQLite database.
+
+            Args:
+                db_con (sqlite3.Connection): SQLite database connection where the data will be stored.
+
+            Raises:
+                ValueError: If `df` is None or empty, indicating that there is no data to write.
+        """
+
+        if self.df is None or self.df.empty:
+            raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
+
+        self.df.to_sql(name="cpi", con=db_con, if_exists="replace", index=False)

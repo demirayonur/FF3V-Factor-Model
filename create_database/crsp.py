@@ -21,9 +21,10 @@ Classes:
 Usage:
     ```python
     from sqlalchemy import create_engine
-    wrds_engine = create_engine("postgresql://username:password@wrds.wharton.upenn.edu:5432/wrds")
+    wrds_engine = create_engine(f"postgresql://{your_username}:{your_password}@wrds.wharton.upenn.edu:5432/wrds")
     crsp = CRSP(wrds=wrds_engine)
     crsp.set_data(start_date="2010-01-01", final_date="2020-12-31")
+    crsp.write_to_sql(your_db)
     ```
 """
 
@@ -119,7 +120,9 @@ class CRSP:
         """"Creates excess return column."""
 
         ff = FamaFrench(ff_version=3, data_freq='M')
-        factors_ff3_monthly = ff.get_data(start_date=start_date, final_date=final_date)
+        ff.set_data(start_date=start_date, final_date=final_date)
+        factors_ff3_monthly = ff.get_data()
+
         self.df = self.df.merge(factors_ff3_monthly, how="left", on="date")
         self.df['ret_excess'] = self.df['ret'] - self.df['rf']
         self.df = self.df.dropna(subset=["ret_excess", "mktcap"])  # excess returns and market caps are essential
@@ -179,8 +182,10 @@ class CRSP:
                 final_date (Union[datetime, str]): End date for data retrieval.
         """
         def get_daily_crsp_data() -> pd.DataFrame:
+
             ff = FamaFrench(ff_version=3, data_freq='D')
-            factors_ff3_daily = ff.get_data(start_date=start_date, final_date=final_date)
+            ff.set_data(start_date=start_date, final_date=final_date)
+            factors_ff3_daily = ff.get_data()
 
             permnos = pd.read_sql(sql="SELECT DISTINCT permno FROM crsp.stksecurityinfohist", con=self.wrds,
                                   dtype={"permno": int})
@@ -223,6 +228,16 @@ class CRSP:
         self.df = self.df.merge(df_daily[["permno", "date", "volatility"]], on=["permno", "date"], how="left")
 
     def write_to_sql(self, db_con: sqlite3.Connection):
-        """Writes the latest form of the dataframe to the given database as a table"""
+        """
+            Writes the processed CRSP data to an SQLite database.
+
+            Args:
+                db_con (sqlite3.Connection): SQLite database connection where the data will be stored.
+
+            Raises:
+                ValueError: If `df` is None or empty, indicating that there is no data to write.
+        """
+        if self.df is None or self.df.empty:
+            raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
 
         self.df.to_sql(name="crsp", con=db_con, if_exists="replace", index=False)

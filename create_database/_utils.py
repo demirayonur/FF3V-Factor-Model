@@ -4,8 +4,7 @@ from typing import Union
 import pandas as pd
 
 
-def convert_to_datetime(date_value: Union[str, datetime],
-                        param_name: str) -> datetime:
+def convert_to_datetime(date_value: Union[str, datetime], param_name: str) -> datetime:
     """
     Converts a date input into a `datetime` object, ensuring proper format and validation.
 
@@ -66,8 +65,7 @@ def convert_to_datetime(date_value: Union[str, datetime],
         raise TypeError(f"{param_name} must be either a datetime object or a string in 'YYYY-MM-DD' format.")
 
 
-def get_annual_compustat_query(start_date: datetime,
-                               final_date: datetime) -> str:
+def get_annual_compustat_query(start_date: datetime, final_date: datetime) -> str:
     """
         Generates an SQL query to retrieve annual Compustat data from WRDS.
 
@@ -100,8 +98,30 @@ def get_annual_compustat_query(start_date: datetime,
     return compustat_query
 
 
-def get_crsp_query(start_date: datetime,
-                   final_date: datetime) -> str:
+def get_crsp_query(start_date: datetime, final_date: datetime) -> str:
+    """
+        Constructs an SQL query to retrieve monthly CRSP stock data for a specified date range.
+
+        This function generates an SQL query to extract stock return and market information from
+        the CRSP database. The query filters for U.S. common stocks with active trading status,
+        listed on major exchanges (NYSE, AMEX, NASDAQ), and includes relevant security identifiers.
+
+        The query extracts the following fields:
+            - `permno`: Unique stock identifier.
+            - `date`: Monthly timestamp (truncated to month level).
+            - `ret`: Monthly stock return.
+            - `shrout`: Shares outstanding.
+            - `altprc`: Adjusted price.
+            - `primaryexch`: Primary exchange code (N = NYSE, A = AMEX, Q = NASDAQ).
+            - `siccd`: Standard Industrial Classification (SIC) code.
+
+        Args:
+            start_date (datetime): The start date for data retrieval (inclusive).
+            final_date (datetime): The end date for data retrieval (inclusive).
+
+        Returns:
+            str: A formatted SQL query string for retrieving CRSP data within the given date range.
+        """
 
     crsp_monthly_query = (
         "SELECT msf.permno, date_trunc('month', msf.mthcaldt)::date AS date, msf.mthret AS ret, "
@@ -124,6 +144,28 @@ def get_crsp_query(start_date: datetime,
 def get_daily_crsp_query(start_date: datetime,
                          final_date: datetime,
                          permno_string: str) -> str:
+    """
+        Constructs an SQL query to retrieve daily CRSP stock data for a specified date range and list of stocks.
+
+        This function generates an SQL query to extract stock return and market information from
+        the CRSP database at a daily frequency. The query filters for U.S. common stocks with
+        active trading status, listed on major exchanges (NYSE, AMEX, NASDAQ), and includes
+        relevant security identifiers.
+
+        The query extracts the following fields:
+            - `permno`: Unique stock identifier.
+            - `date`: Daily timestamp.
+            - `ret`: Daily stock return.
+
+        Args:
+            start_date (datetime): The start date for data retrieval (inclusive).
+            final_date (datetime): The end date for data retrieval (inclusive).
+            permno_string (str): A formatted string containing a list of PERMNO stock identifiers.
+
+        Returns:
+            str: A formatted SQL query string for retrieving CRSP daily data within the given date range.
+        """
+
     crsp_daily_sub_query = (
         "SELECT dsf.permno, dlycaldt AS date, dlyret AS ret "
         "FROM crsp.dsf_v2 AS dsf "
@@ -132,30 +174,69 @@ def get_daily_crsp_query(start_date: datetime,
         "ssih.secinfostartdt <= dsf.dlycaldt AND "
         "dsf.dlycaldt <= ssih.secinfoenddt "
         f"WHERE dsf.permno IN {permno_string} "
-        f"AND dlycaldt BETWEEN '{start_date}' AND '{final_date}' "
-        "AND ssih.sharetype = 'NS' "
-        "AND ssih.securitytype = 'EQTY' "
-        "AND ssih.securitysubtype = 'COM' "
-        "AND ssih.usincflg = 'Y' "
-        "AND ssih.issuertype in ('ACOR', 'CORP') "
-        "AND ssih.primaryexch in ('N', 'A', 'Q') "
-        "AND ssih.conditionaltype in ('RW', 'NW') "
-        "AND ssih.tradingstatusflg = 'A'"
+            f"AND dlycaldt BETWEEN '{start_date}' AND '{final_date}' "
+            "AND ssih.sharetype = 'NS' "
+            "AND ssih.securitytype = 'EQTY' "
+            "AND ssih.securitysubtype = 'COM' "
+            "AND ssih.usincflg = 'Y' "
+            "AND ssih.issuertype in ('ACOR', 'CORP') "
+            "AND ssih.primaryexch in ('N', 'A', 'Q') "
+            "AND ssih.conditionaltype in ('RW', 'NW') "
+            "AND ssih.tradingstatusflg = 'A'"
     )
     return crsp_daily_sub_query
 
 def get_ccm_linking_table_query():
+    """
+        Constructs an SQL query to retrieve the CRSP-Compustat linking table.
+
+        This function generates an SQL query to extract the mapping between CRSP's `permno`
+        identifiers and Compustat's `gvkey` identifiers from the CRSP-Compustat Merged (CCM) link table.
+
+        The query extracts the following fields:
+            - `permno`: Unique stock identifier from CRSP.
+            - `gvkey`: Unique firm identifier from Compustat.
+            - `linkdt`: Start date of the link.
+            - `linkenddt`: End date of the link (or current date if missing).
+
+        The query filters to retain only active and relevant links by selecting:
+            - `linktype` values `LU` (Link Update) and `LC` (Link Current).
+            - `linkprim` values `P` (Primary) and `C` (Current).
+
+        Args:
+            None
+
+        Returns:
+            str: A formatted SQL query string for retrieving the CRSP-Compustat linking table.
+    """
+
     ccm_linking_table_query = (
-        "SELECT lpermno AS permno, gvkey, linkdt, "
-        "COALESCE(linkenddt, CURRENT_DATE) AS linkenddt "
-        "FROM crsp.ccmxpf_linktable "
-        "WHERE linktype IN ('LU', 'LC') "
-        "AND linkprim IN ('P', 'C')"
+        "SELECT lpermno AS permno, gvkey, linkdt, COALESCE(linkenddt, CURRENT_DATE) AS linkenddt "
+        "FROM crsp.ccmxpf_linktable WHERE linktype IN ('LU', 'LC') AND linkprim IN ('P', 'C')"
     )
     return ccm_linking_table_query
 
 def change_crsp_exchange_codes(crsp_df: pd.DataFrame) -> None:
-    # inplace
+    """
+        Assigns exchange classifications to CRSP stock data based on primary exchange codes.
+
+        This function modifies the given DataFrame in-place by adding an 'exchange' column,
+        which categorizes firms into major stock exchanges based on the `primaryexch` column.
+
+        The classification is as follows:
+            - 'N': NYSE
+            - 'A': AMEX
+            - 'Q': NASDAQ
+            - Any other value: Other
+
+        Args:
+            crsp_df (pd.DataFrame): A DataFrame containing CRSP data with a column named 'primaryexch'.
+                This column should contain exchange codes as single-character strings.
+
+        Returns:
+            None: The function modifies the input DataFrame in-place by adding an 'exchange' column.
+    """
+
     def assign_exchange(primaryexch):
         if primaryexch == "N":
             return "NYSE"
@@ -169,7 +250,33 @@ def change_crsp_exchange_codes(crsp_df: pd.DataFrame) -> None:
     crsp_df["exchange"] = crsp_df["primaryexch"].apply(assign_exchange)
 
 def change_crsp_industry_codes(crsp_df: pd.DataFrame) -> None:
-    # inplace
+    """
+        Assigns industry classifications to CRSP stock data based on SIC codes.
+
+        This function modifies the given DataFrame in-place by adding an 'industry' column,
+        which categorizes firms into broad industry groups based on their SIC (Standard Industrial Classification) codes.
+
+        The classification is as follows:
+            - 0001-0999: Agriculture
+            - 1000-1499: Mining
+            - 1500-1799: Construction
+            - 2000-3999: Manufacturing
+            - 4000-4899: Transportation
+            - 4900-4999: Utilities
+            - 5000-5199: Wholesale
+            - 5200-5999: Retail
+            - 6000-6799: Finance
+            - 7000-8999: Services
+            - 9000-9999: Public
+            - Any other value: Missing
+
+        Args:
+            crsp_df (pd.DataFrame): A DataFrame containing CRSP data with a column named 'siccd'.
+                This column should contain SIC codes as integers.
+
+        Returns:
+            None: The function modifies the input DataFrame in-place by adding an 'industry' column.
+    """
     def assign_industry(siccd):
         if 1 <= siccd <= 999:
             return "Agriculture"
@@ -197,5 +304,3 @@ def change_crsp_industry_codes(crsp_df: pd.DataFrame) -> None:
             return "Missing"
 
     crsp_df["industry"] = crsp_df["siccd"].apply(assign_industry)
-
-

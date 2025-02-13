@@ -5,7 +5,7 @@ from typing import Union
 
 import pandas_datareader as pdr
 import pandas as pd
-
+import sqlite3
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -85,13 +85,10 @@ class FamaFrench:
             raise ValueError(f'Only daily (D) and monthly (M) create_database are supported!')
 
         self.data_freq: str = data_freq
+        self.df = None
 
-    def get_data(self,
-                 start_date: Union[datetime, str],
-                 final_date: Union[datetime, str],
-                 output_log: bool = False) -> pd.DataFrame:
+    def set_data(self, start_date: Union[datetime, str], final_date: Union[datetime, str]):
         """
-
             Retrieves Fama-French factor create_database for a specified date range and factor model version.
 
             This function fetches either daily or monthly Fama-French factor create_database from the
@@ -110,25 +107,6 @@ class FamaFrench:
                 or a string in a recognizable date format (e.g., 'YYYY-MM-DD').
                 Must be greater than or equal to `start_date`.
 
-            output_log : bool, optional (default=False)
-                If `True`, prints a log message indicating the create_database retrieval parameters
-
-            Returns:
-            --------
-            pd.DataFrame
-                A DataFrame containing the requested Fama-French factor create_database. The DataFrame
-                includes the following columns (depending on the chosen factor model version):
-
-                - **market_excess_return**: Market excess return (market return minus the risk-free rate).
-                - **smb**: Small-minus-big (size factor).
-                - **hml**: High-minus-low (value factor).
-                - **rf**: Risk-free rate.
-                - **rmw** (only for Fama-French 5-factor model): Profitability factor
-                  (robust-minus-weak).
-                - **cma** (only for Fama-French 5-factor model): Investment factor
-                  (conservative-minus-aggressive).
-                - **date**: Converted datetime index.
-
             Raises:
             -------
             ValueError
@@ -137,8 +115,7 @@ class FamaFrench:
             Example:
             --------
             >>> ff = FamaFrench(ff_version=3, data_freq='M')
-            >>> df = ff.get_data(start_date='2020-01-01', final_date='2022-12-31')
-            >>> print(df.head())
+            >>> ff.set_data(start_date='2020-01-01', final_date='2022-12-31')
 
             Notes:
             ------
@@ -147,19 +124,10 @@ class FamaFrench:
             - The `"date"` column is converted to `datetime` format for ease of use.
         """
 
-        # Convert both dates
         start_date = convert_to_datetime(start_date, "start_date")
         final_date = convert_to_datetime(final_date, "final_date")
-
-        # Ensure final_date is not earlier than start_date
         if final_date < start_date:
             raise ValueError("final_date cannot be earlier than start_date.")
-
-        if output_log:
-            if self.data_freq == 'D':
-                print(f'Fetching Fama-French-{self.ff_version} daily data from {start_date} to {final_date}')
-            else:
-                print(f'Fetching Fama-French-{self.ff_version} monthly data from {start_date} to {final_date}')
 
         raw_data = pdr.DataReader(
             name=famafrench_identifiers_dict[self.ff_version, self.data_freq],
@@ -167,7 +135,7 @@ class FamaFrench:
             start=start_date,
             end=final_date)[0]
 
-        factors = (raw_data
+        self.df = (raw_data
                    .divide(100)
                    .reset_index(names="date")
                    .assign(date=lambda x: pd.to_datetime(x["date"].astype(str)))
@@ -175,7 +143,26 @@ class FamaFrench:
                    .rename(columns={"mkt-rf": "market_excess_return"})
                    )
 
-        if output_log:
-            print('Data has been successfully retrieved.')
+    def get_data(self) -> pd.DataFrame:
+        """Return the FF data"""
 
-        return factors
+        if self.df is None or self.df.empty:
+            raise ValueError("Fama-French data not available.")
+        return self.df
+
+    def write_to_sql(self, db_con: sqlite3.Connection):
+        """
+            Writes the processed Fama-French data to an SQLite database.
+
+            Args:
+                db_con (sqlite3.Connection): SQLite database connection where the data will be stored.
+
+            Raises:
+                ValueError: If `df` is None or empty, indicating that there is no data to write.
+        """
+
+        if self.df is None or self.df.empty:
+            raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
+
+        format_name = f"fama_french-{self.ff_version}-{self.data_freq}"
+        self.df.to_sql(name=format_name, con=db_con, if_exists="replace", index=False)
