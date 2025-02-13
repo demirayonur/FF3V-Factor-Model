@@ -45,8 +45,8 @@ class FamaFrench:
         """
            Initializes the FamaFrench class.
 
-           This class retrieves and processes Fama-French factor data based on the specified
-           factor model version and data frequency.
+           This class retrieves and processes Fama-French factor create_database based on the specified
+           factor model version and create_database frequency.
 
            Parameters:
            -----------
@@ -56,9 +56,9 @@ class FamaFrench:
                - `5` for the Fama-French Five-Factor Model.
 
            data_freq : str
-               The frequency of the data. Must be either:
-               - `'D'` for daily data.
-               - `'M'` for monthly data.
+               The frequency of the create_database. Must be either:
+               - `'D'` for daily create_database.
+               - `'M'` for monthly create_database.
 
            Raises:
            -------
@@ -82,7 +82,7 @@ class FamaFrench:
         self.ff_version: int = ff_version
 
         if data_freq not in ['D', 'M']:
-            raise ValueError(f'Only daily (D) and monthly (M) data are supported!')
+            raise ValueError(f'Only daily (D) and monthly (M) create_database are supported!')
 
         self.data_freq: str = data_freq
 
@@ -92,31 +92,31 @@ class FamaFrench:
                  output_log: bool = False) -> pd.DataFrame:
         """
 
-            Retrieves Fama-French factor data for a specified date range and factor model version.
+            Retrieves Fama-French factor create_database for a specified date range and factor model version.
 
-            This function fetches either daily or monthly Fama-French factor data from the
-            Kenneth R. French data library using `pandas_datareader`. The data is pre-processed
+            This function fetches either daily or monthly Fama-French factor create_database from the
+            Kenneth R. French create_database library using `pandas_datareader`. The create_database is pre-processed
             to ensure consistency, including date conversion, percentage normalization, and
             column renaming.
 
             Parameters:
             -----------
             start_date : Union[datetime, str]
-                The start date for retrieving the Fama-French data. Can be a `datetime` object
+                The start date for retrieving the Fama-French create_database. Can be a `datetime` object
                 or a string in a recognizable date format (e.g., 'YYYY-MM-DD').
 
             final_date : Union[datetime, str]
-                The end date for retrieving the Fama-French data. Can be a `datetime` object
+                The end date for retrieving the Fama-French create_database. Can be a `datetime` object
                 or a string in a recognizable date format (e.g., 'YYYY-MM-DD').
                 Must be greater than or equal to `start_date`.
 
             output_log : bool, optional (default=False)
-                If `True`, prints a log message indicating the data retrieval parameters
+                If `True`, prints a log message indicating the create_database retrieval parameters
 
             Returns:
             --------
             pd.DataFrame
-                A DataFrame containing the requested Fama-French factor data. The DataFrame
+                A DataFrame containing the requested Fama-French factor create_database. The DataFrame
                 includes the following columns (depending on the chosen factor model version):
 
                 - **market_excess_return**: Market excess return (market return minus the risk-free rate).
@@ -142,7 +142,7 @@ class FamaFrench:
 
             Notes:
             ------
-            - The raw percentage values from the data source are converted to decimal format.
+            - The raw percentage values from the create_database source are converted to decimal format.
             - The column `"mkt-rf"` from the original dataset is renamed to `"market_excess_return"`.
             - The `"date"` column is converted to `datetime` format for ease of use.
         """
@@ -157,9 +157,9 @@ class FamaFrench:
 
         if output_log:
             if self.data_freq == 'D':
-                print(f'Fetching Fama-French-{self.ff_version} daily data from {start_date} to {final_date}')
+                print(f'Fetching Fama-French-{self.ff_version} daily create_database from {start_date} to {final_date}')
             else:
-                print(f'Fetching Fama-French-{self.ff_version} monthly data from {start_date} to {final_date}')
+                print(f'Fetching Fama-French-{self.ff_version} monthly create_database from {start_date} to {final_date}')
 
         raw_data = pdr.DataReader(
             name=famafrench_identifiers_dict[self.ff_version, self.data_freq],

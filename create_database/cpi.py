@@ -11,23 +11,23 @@ warnings.filterwarnings("ignore")
 
 class CPI:
     """
-        A class for retrieving and processing Consumer Price Index (CPI) data from the
+        A class for retrieving and processing Consumer Price Index (CPI) create_database from the
         Federal Reserve Economic Data (FRED).
 
         The Consumer Price Index (CPI) measures the average change over time in the prices
         paid by consumers for goods and services. It is a key indicator of inflation and
         economic stability.
 
-        This class allows users to fetch CPI data from FRED within a specified date range
+        This class allows users to fetch CPI create_database from FRED within a specified date range
         and optionally normalize the values for comparative analysis.
 
         Attributes:
         -----------
         start_date : datetime
-            The start date for retrieving CPI data, converted to a `datetime` object.
+            The start date for retrieving CPI create_database, converted to a `datetime` object.
 
         final_date : datetime
-            The end date for retrieving CPI data, converted to a `datetime` object.
+            The end date for retrieving CPI create_database, converted to a `datetime` object.
 
         Raises:
         -------
@@ -42,8 +42,8 @@ class CPI:
 
         Notes:
         ------
-        - The CPI data is fetched using `pandas_datareader` from the FRED database.
-        - The CPIAUCNS (All Urban Consumers CPI) key is used to access CPI data.
+        - The CPI create_database is fetched using `pandas_datareader` from the FRED database.
+        - The CPIAUCNS (All Urban Consumers CPI) key is used to access CPI create_database.
         """
 
     def __init__(self,
@@ -53,16 +53,16 @@ class CPI:
             Initializes the CPI class with a specified date range.
 
             Converts input dates into `datetime` objects and ensures validity
-            before fetching CPI data.
+            before fetching CPI create_database.
 
             Parameters:
             -----------
             start_date : Union[str, datetime]
-                The start date for retrieving CPI data. It can be either a string in
+                The start date for retrieving CPI create_database. It can be either a string in
                 'YYYY-MM-DD' format or a `datetime` object.
 
             final_date : Union[str, datetime]
-                The end date for retrieving CPI data. It can be either a string in
+                The end date for retrieving CPI create_database. It can be either a string in
                 'YYYY-MM-DD' format or a `datetime` object.
                 Must be greater than or equal to `start_date`.
 
@@ -82,9 +82,9 @@ class CPI:
                  normalize: bool = True) -> pd.DataFrame:
 
         """
-            Fetches CPI data from FRED for the specified date range.
+            Fetches CPI create_database from FRED for the specified date range.
 
-            Retrieves monthly CPI data and returns it as a Pandas DataFrame.
+            Retrieves monthly CPI create_database and returns it as a Pandas DataFrame.
             Optionally normalizes the CPI values by dividing all values by the
             latest CPI value to set the most recent period as the reference (value = 1).
 
@@ -97,7 +97,7 @@ class CPI:
             Returns:
             --------
             pd.DataFrame
-                A DataFrame containing the retrieved CPI data with the following columns:
+                A DataFrame containing the retrieved CPI create_database with the following columns:
                 - **date**: The date of the CPI record.
                 - **cpi**: The Consumer Price Index value (normalized if `normalize=True`).
 
@@ -109,7 +109,7 @@ class CPI:
 
             Notes:
             ------
-            - The data is retrieved using `pandas_datareader` from the FRED database.
+            - The create_database is retrieved using `pandas_datareader` from the FRED database.
             - The CPIAUCNS key (Consumer Price Index for All Urban Consumers) is used.
             - Normalization allows easy comparison of relative changes over time.
         """
