@@ -225,8 +225,6 @@ class CRSP:
             return sub_df
 
         df_daily = df_daily.groupby("permno", group_keys=False).apply(compute_vol)
-        filtered_df = df_daily[df_daily['permno'].isin([10026, 10028, 10032])]  #@todo 1
-        filtered_df.to_csv("daily_data.csv", index=False)  # todo 2
 
         # merge backward
         self.df['date'] = pd.to_datetime(self.df['date'])
@@ -247,8 +245,7 @@ class CRSP:
             Raises:
                 ValueError: If `df` is None or empty, indicating that there is no data to write.
         """
-        filtered_df = self.df[self.df['permno'].isin([10026, 10028, 10032])]
-        filtered_df.to_csv("monthly_data.csv", index=False)
+
         if self.df is None or self.df.empty:
             raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
 
