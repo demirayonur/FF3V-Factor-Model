@@ -225,7 +225,17 @@ class CRSP:
             return sub_df
 
         df_daily = df_daily.groupby("permno", group_keys=False).apply(compute_vol)
-        self.df = self.df.merge(df_daily[["permno", "date", "volatility"]], on=["permno", "date"], how="left")
+        filtered_df = df_daily[df_daily['permno'].isin([10026, 10028, 10032])]  #@todo 1
+        filtered_df.to_csv("daily_data.csv", index=False)  # todo 2
+
+        # merge backward
+        self.df['date'] = pd.to_datetime(self.df['date'])
+        df_daily['date'] = pd.to_datetime(df_daily['date'])
+        self.df = self.df.sort_values(['date', 'permno'])
+        df_daily = df_daily.sort_values(['date', 'permno'])
+        df_daily = df_daily[['permno', 'date', 'volatility']]
+        self.df = pd.merge_asof(self.df, df_daily, on='date', by='permno', direction='backward')
+        self.df = self.df.sort_values(['permno', 'date'])
 
     def write_to_sql(self, db_con: sqlite3.Connection):
         """
@@ -237,6 +247,8 @@ class CRSP:
             Raises:
                 ValueError: If `df` is None or empty, indicating that there is no data to write.
         """
+        filtered_df = self.df[self.df['permno'].isin([10026, 10028, 10032])]
+        filtered_df.to_csv("monthly_data.csv", index=False)
         if self.df is None or self.df.empty:
             raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
 
