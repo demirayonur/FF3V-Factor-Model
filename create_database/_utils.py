@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Union
 
+import pandas as pd
+
 
 def convert_to_datetime(date_value: Union[str, datetime],
                         param_name: str) -> datetime:
@@ -96,5 +98,104 @@ def get_annual_compustat_query(start_date: datetime,
             f"AND datadate BETWEEN '{start_date}' AND '{final_date}'"
     )
     return compustat_query
+
+
+def get_crsp_query(start_date: datetime,
+                   final_date: datetime) -> str:
+
+    crsp_monthly_query = (
+        "SELECT msf.permno, date_trunc('month', msf.mthcaldt)::date AS date, msf.mthret AS ret, "
+                "msf.shrout, msf.mthprc AS altprc, ssih.primaryexch, ssih.siccd "
+        "FROM crsp.msf_v2 AS msf "
+        "INNER JOIN crsp.stksecurityinfohist AS ssih "
+        "ON msf.permno = ssih.permno AND ssih.secinfostartdt <= msf.mthcaldt AND msf.mthcaldt <= ssih.secinfoenddt "
+        f"WHERE msf.mthcaldt BETWEEN '{start_date}' AND '{final_date}' "
+            "AND ssih.sharetype = 'NS' "
+            "AND ssih.securitytype = 'EQTY' "
+            "AND ssih.securitysubtype = 'COM' "
+            "AND ssih.usincflg = 'Y' "
+            "AND ssih.issuertype in ('ACOR', 'CORP') "
+            "AND ssih.primaryexch in ('N', 'A', 'Q') "
+            "AND ssih.conditionaltype in ('RW', 'NW') "
+            "AND ssih.tradingstatusflg = 'A'"
+    )
+    return crsp_monthly_query
+
+def get_daily_crsp_query(start_date: datetime,
+                         final_date: datetime,
+                         permno_string: str) -> str:
+    crsp_daily_sub_query = (
+        "SELECT dsf.permno, dlycaldt AS date, dlyret AS ret "
+        "FROM crsp.dsf_v2 AS dsf "
+        "INNER JOIN crsp.stksecurityinfohist AS ssih "
+        "ON dsf.permno = ssih.permno AND "
+        "ssih.secinfostartdt <= dsf.dlycaldt AND "
+        "dsf.dlycaldt <= ssih.secinfoenddt "
+        f"WHERE dsf.permno IN {permno_string} "
+        f"AND dlycaldt BETWEEN '{start_date}' AND '{final_date}' "
+        "AND ssih.sharetype = 'NS' "
+        "AND ssih.securitytype = 'EQTY' "
+        "AND ssih.securitysubtype = 'COM' "
+        "AND ssih.usincflg = 'Y' "
+        "AND ssih.issuertype in ('ACOR', 'CORP') "
+        "AND ssih.primaryexch in ('N', 'A', 'Q') "
+        "AND ssih.conditionaltype in ('RW', 'NW') "
+        "AND ssih.tradingstatusflg = 'A'"
+    )
+    return crsp_daily_sub_query
+
+def get_ccm_linking_table_query():
+    ccm_linking_table_query = (
+        "SELECT lpermno AS permno, gvkey, linkdt, "
+        "COALESCE(linkenddt, CURRENT_DATE) AS linkenddt "
+        "FROM crsp.ccmxpf_linktable "
+        "WHERE linktype IN ('LU', 'LC') "
+        "AND linkprim IN ('P', 'C')"
+    )
+    return ccm_linking_table_query
+
+def change_crsp_exchange_codes(crsp_df: pd.DataFrame) -> None:
+    # inplace
+    def assign_exchange(primaryexch):
+        if primaryexch == "N":
+            return "NYSE"
+        elif primaryexch == "A":
+            return "AMEX"
+        elif primaryexch == "Q":
+            return "NASDAQ"
+        else:
+            return "Other"
+
+    crsp_df["exchange"] = crsp_df["primaryexch"].apply(assign_exchange)
+
+def change_crsp_industry_codes(crsp_df: pd.DataFrame) -> None:
+    # inplace
+    def assign_industry(siccd):
+        if 1 <= siccd <= 999:
+            return "Agriculture"
+        elif 1000 <= siccd <= 1499:
+            return "Mining"
+        elif 1500 <= siccd <= 1799:
+            return "Construction"
+        elif 2000 <= siccd <= 3999:
+            return "Manufacturing"
+        elif 4000 <= siccd <= 4899:
+            return "Transportation"
+        elif 4900 <= siccd <= 4999:
+            return "Utilities"
+        elif 5000 <= siccd <= 5199:
+            return "Wholesale"
+        elif 5200 <= siccd <= 5999:
+            return "Retail"
+        elif 6000 <= siccd <= 6799:
+            return "Finance"
+        elif 7000 <= siccd <= 8999:
+            return "Services"
+        elif 9000 <= siccd <= 9999:
+            return "Public"
+        else:
+            return "Missing"
+
+    crsp_df["industry"] = crsp_df["siccd"].apply(assign_industry)
 
 
