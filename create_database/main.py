@@ -3,7 +3,6 @@ from fama_french_factors import FamaFrench
 from sqlalchemy import create_engine
 from compustat import Compustat
 from dotenv import load_dotenv
-from datetime import datetime
 from pathlib import Path
 from crsp import CRSP
 from cpi import CPI
