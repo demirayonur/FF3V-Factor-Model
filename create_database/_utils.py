@@ -62,3 +62,17 @@ def convert_to_datetime(date_value: Union[str, datetime],
             raise ValueError(f"Invalid {param_name} format. Use 'YYYY-MM-DD'.")
     else:
         raise TypeError(f"{param_name} must be either a datetime object or a string in 'YYYY-MM-DD' format.")
+
+
+def get_annual_compustat_query(start_date: datetime,
+                               final_date: datetime) -> str:
+    compustat_query = (
+        "SELECT gvkey, datadate, seq, ceq, at, lt, txditc, txdb, itcb,  pstkrv, pstkl, pstk, sale, cogs, xint, xsga "
+        "FROM comp.funda "
+        "WHERE indfmt = 'INDL' "
+            "AND datafmt = 'STD' "
+            "AND consol = 'C' "
+            "AND curcd = 'USD' "
+            f"AND datadate BETWEEN '{start_date}' AND '{final_date}'"
+    )
+    return compustat_query

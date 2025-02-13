@@ -79,7 +79,8 @@ class CPI:
             raise ValueError("final_date cannot be earlier than start_date.")
 
     def get_data(self,
-                 normalize: bool = True) -> pd.DataFrame:
+                 normalize: bool = True,
+                 output_log: bool = False) -> pd.DataFrame:
 
         """
             Fetches CPI create_database from FRED for the specified date range.
@@ -93,6 +94,9 @@ class CPI:
             normalize : bool, optional (default=True)
                 If `True`, normalizes the CPI values by dividing each value by
                 the last recorded CPI value in the dataset.
+
+            output_log : bool, optional (default=False)
+                If `True`, prints a log message indicating the create_database retrieval parameters
 
             Returns:
             --------
@@ -113,11 +117,18 @@ class CPI:
             - The CPIAUCNS key (Consumer Price Index for All Urban Consumers) is used.
             - Normalization allows easy comparison of relative changes over time.
         """
+        if output_log:
+            print(f"Retrieving CPI create_database from {self.start_date} to {self.final_date}..")
         cpi_monthly = pdr.DataReader(name="CPIAUCNS", data_source="fred", start=self.start_date, end=self.final_date)
         cpi_monthly.reset_index(names="date", inplace=True)
         cpi_monthly.rename(columns={"CPIAUCNS": "cpi"}, inplace=True)
 
         if normalize:
             cpi_monthly = cpi_monthly.assign(cpi=lambda x: x["cpi"]/x["cpi"].iloc[-1])
+            if output_log:
+                print('Normalized CPI data retrieved from FRED.')
+        else:
+            if output_log:
+                print('No normalized CPI data retrieved from FRED.')
 
         return cpi_monthly

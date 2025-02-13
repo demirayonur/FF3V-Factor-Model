@@ -157,9 +157,9 @@ class FamaFrench:
 
         if output_log:
             if self.data_freq == 'D':
-                print(f'Fetching Fama-French-{self.ff_version} daily create_database from {start_date} to {final_date}')
+                print(f'Fetching Fama-French-{self.ff_version} daily data from {start_date} to {final_date}')
             else:
-                print(f'Fetching Fama-French-{self.ff_version} monthly create_database from {start_date} to {final_date}')
+                print(f'Fetching Fama-French-{self.ff_version} monthly data from {start_date} to {final_date}')
 
         raw_data = pdr.DataReader(
             name=famafrench_identifiers_dict[self.ff_version, self.data_freq],
@@ -174,5 +174,8 @@ class FamaFrench:
                    .rename(str.lower, axis="columns")
                    .rename(columns={"mkt-rf": "market_excess_return"})
                    )
+
+        if output_log:
+            print('Data has been successfully retrieved.')
 
         return factors
