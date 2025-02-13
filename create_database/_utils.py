@@ -66,6 +66,26 @@ def convert_to_datetime(date_value: Union[str, datetime],
 
 def get_annual_compustat_query(start_date: datetime,
                                final_date: datetime) -> str:
+    """
+        Generates an SQL query to retrieve annual Compustat data from WRDS.
+
+        Args:
+            start_date (datetime): The start date for filtering the data.
+            final_date (datetime): The end date for filtering the data.
+
+        Returns:
+            str: An SQL query string to fetch annual Compustat data.
+
+        Notes:
+            - The query selects key financial variables from the `comp.funda` table.
+            - Filters applied:
+                - `indfmt = 'INDL'`: Industrial format data.
+                - `datafmt = 'STD'`: Standardized data.
+                - `consol = 'C'`: Consolidated financials.
+                - `curcd = 'USD'`: Data in U.S. dollars.
+                - `datadate BETWEEN start_date AND final_date`: Restricts data to the specified date range.
+    """
+
     compustat_query = (
         "SELECT gvkey, datadate, seq, ceq, at, lt, txditc, txdb, itcb,  pstkrv, pstkl, pstk, sale, cogs, xint, xsga "
         "FROM comp.funda "
@@ -76,3 +96,5 @@ def get_annual_compustat_query(start_date: datetime,
             f"AND datadate BETWEEN '{start_date}' AND '{final_date}'"
     )
     return compustat_query
+
+
