@@ -12,7 +12,12 @@ warnings.filterwarnings('ignore')
 
 class FamaMacbeth:
 
-    def __init__(self, start_date: str, final_date: str, compustat_month_lag:int = 6):
+    def __init__(self,
+                 start_date: str,
+                 final_date: str,
+                 compustat_month_lag:int = 6,
+                 drop_tail_percentile:float = None,
+                 desired_size: str = None,):
 
         current_path = Path(__file__).resolve()
         parent_path = current_path.parent.parent
@@ -21,6 +26,10 @@ class FamaMacbeth:
         self.database_connection = sqlite3.connect(database=database_name)
         self.compustat_month_lag = compustat_month_lag
         self.data = None
+        self.drop_tail_percentile = drop_tail_percentile
+        if self.drop_tail_percentile is not None and self.drop_tail_percentile >= 0.25:
+            raise ValueError('Drop tail percentile must be lower than 0.25')
+        self.desired_size = desired_size
 
     def prepare_data(self):
 
@@ -56,8 +65,17 @@ class FamaMacbeth:
                                     )
 
         data_fama_macbeth = (data_fama_macbeth.merge(data_fama_macbeth_lagged, how="left", on=["permno", "date"])
-                                              .get(["permno", "date", "ret_excess_lead", "log_mktcap", "log_bm", "op", "inv", "ret_excess", "momentum", "volatility"])
+                                              .get(["permno", "date", "size_category", "ret_excess_lead", "log_mktcap", "log_bm", "op", "inv", "ret_excess", "momentum", "volatility"])
                                               .dropna())
+
+        if self.drop_tail_percentile is not None:
+            date_counts = data_fama_macbeth['date'].value_counts()
+            percentile_ = date_counts.quantile(self.drop_tail_percentile)
+            valid_dates = date_counts[date_counts >= percentile_].index
+            data_fama_macbeth = data_fama_macbeth[data_fama_macbeth['date'].isin(valid_dates)]
+
+        if self.desired_size is not None:
+            data_fama_macbeth = data_fama_macbeth[data_fama_macbeth['size_category'] == self.desired_size]
 
         self.data = data_fama_macbeth
 
@@ -72,7 +90,7 @@ class FamaMacbeth:
         price_of_risk = (risk_premiums
                          .melt(id_vars="date", var_name="factor", value_name="estimate")
                          .groupby("factor")["estimate"]
-                         .apply(lambda x: pd.Series({"risk_premium": 100 * x.mean(), "t_statistic": x.mean() / x.std() * np.sqrt(len(x))}))
+                         .apply(lambda x: pd.Series({"risk_premium": 100 * x.mean()}))
                          .reset_index()
                          .pivot(index="factor", columns="level_1", values="estimate")
                          .reset_index())
@@ -83,8 +101,9 @@ class FamaMacbeth:
                                     .groupby("factor")
                                     .apply(lambda x: (x["estimate"].mean() / smf.ols("estimate ~ 1", x).fit(cov_type="HAC", cov_kwds={"maxlags": 6}).bse))
                                     .reset_index()
-                                    .rename(columns={"Intercept": "t_statistic_newey_west"})
+                                    .rename(columns={"Intercept": "t_stat_newey_west"})
                                     )
 
         price_of_risk = price_of_risk.merge(price_of_risk_newey_west, on="factor").round(3)
+
         return price_of_risk
