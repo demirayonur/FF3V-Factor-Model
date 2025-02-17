@@ -1,4 +1,5 @@
-
+from create_database.macro_predictors import MacroPredictors
+from create_database.q_factors import QFactors
 from fama_french_factors import FamaFrench
 from sqlalchemy import create_engine
 from compustat import Compustat
@@ -61,8 +62,21 @@ def run(start_date: str, final_date: str):
     crsp_reader.set_data(start_date=start_date, final_date=final_date)
     crsp_reader.write_to_sql(db_con=database_connection)
 
+    # Q-Factors
+    # ---------
+    q_reader = QFactors(start_date=start_date, final_date=final_date)
+    q_reader.set_data()
+    q_reader.write_to_sql(db_con=database_connection)
+
+    # Macroeconomic Predictors
+    # ------------------------
+    macro = MacroPredictors(start_date=start_date, final_date=final_date)
+    macro.set_data()
+    macro.write_to_sql(db_con=database_connection)
+
+
 
 if __name__ == '__main__':
-    start_date = "1963-01-01"
+    start_date = "2021-01-01"
     final_date = "2023-12-31"
     run(start_date, final_date)

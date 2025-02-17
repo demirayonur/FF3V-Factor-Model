@@ -164,5 +164,5 @@ class FamaFrench:
         if self.df is None or self.df.empty:
             raise ValueError("No data available to write to SQL. Ensure that `set_data` has been executed.")
 
-        format_name = f"fama_french-{self.ff_version}-{self.data_freq}"
+        format_name = f"fama_french_{self.ff_version}_{self.data_freq}"
         self.df.to_sql(name=format_name, con=db_con, if_exists="replace", index=False)
