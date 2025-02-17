@@ -1,4 +1,4 @@
-## Fama-MacBeth Results with All Data
+## All Factory
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -11,7 +11,7 @@
 | **ret_excess** | -5.225      | -12.591                 |
 | **volatility** | -8.450      | -2.015                  |
 
-## Fama-MacBeth Results with Micro Caps
+## Micro Factory
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -24,7 +24,7 @@
 | **ret_excess** | -5.931 | -13.762 |
 | **volatility** | -9.890 | -2.527  |
 
-## Fama-MacBeth Results with Small Caps
+## Small Factory
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -37,7 +37,7 @@
 | **ret_excess** | -2.913 | -6.659 |
 | **volatility** | -10.351 | -1.226  |
 
-## Fama-MacBeth Results with Large Caps
+## Large Factory
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
