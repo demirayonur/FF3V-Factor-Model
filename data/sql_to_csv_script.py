@@ -36,8 +36,8 @@ df = (crsp_data.merge(characteristics, how="left", left_on=["gvkey", "date"], ri
                                                         inv=x["inv"].fillna(method="ffill"))))
 df = df.reset_index(drop=True)
 
-df = df.get(["permno", "date", "mktcap", "bm", "op", "inv", "volatility", "ret_excess"]).dropna()
-df.to_csv('crsp_compustat_merged.csv', index=False)
+df = df.get(["permno", "date", "exchange", "industry", "mktcap", "bm", "op", "inv", "volatility", "ret_excess"]).dropna()
+df.to_csv(f'{start_date}__{final_date}.csv', index=False)
 
 ff3_factors = pd.read_sql_query(sql="SELECT * FROM fama_french_3_M", con=db, parse_dates={"date"})
 ff3_factors.to_csv('ff3_factors.csv', index=False)
