@@ -75,8 +75,7 @@ def run(start_date: str, final_date: str):
     macro.write_to_sql(db_con=database_connection)
 
 
-
 if __name__ == '__main__':
-    start_date = "2021-01-01"
+    start_date = "1963-01-01"
     final_date = "2023-12-31"
     run(start_date, final_date)
