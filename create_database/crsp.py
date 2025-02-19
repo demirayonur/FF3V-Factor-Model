@@ -221,7 +221,12 @@ class CRSP:
         df_daily = df_daily.sort_values(by=['permno', 'date']).reset_index(drop=True)
 
         def compute_vol(sub_df):
-            sub_df["volatility"] = sub_df["ret_excess"].shift(1).rolling(window=60, min_periods=20).std()
+            #sub_df["volatility"] = sub_df["ret_excess"].shift(1).rolling(window=60, min_periods=20).std()
+            sub_df["volatility"] = (
+                    sub_df["ret_excess"].shift(1)
+                    .rolling(window=60, min_periods=20)
+                    .std() * np.sqrt(sub_df["ret_excess"].shift(1).rolling(window=60, min_periods=20).count())
+            )
             return sub_df
 
         df_daily = df_daily.groupby("permno", group_keys=False).apply(compute_vol)

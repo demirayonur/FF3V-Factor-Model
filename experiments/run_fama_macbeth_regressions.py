@@ -9,7 +9,7 @@ def run(start_date = '1963-01-01', final_date = '2023-12-31', drop_tail_percenti
 
     fm_regressor = FamaMacbeth(start_date, final_date, 6, drop_tail_percentile, desired_size)
     fm_regressor.prepare_data()
-    results = fm_regressor.run()
+    results = fm_regressor.run(is_ols=False)
     return results
 
 if __name__ == '__main__':

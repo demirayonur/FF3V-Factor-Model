@@ -65,7 +65,7 @@ class FamaMacbeth:
                                     )
 
         data_fama_macbeth = (data_fama_macbeth.merge(data_fama_macbeth_lagged, how="left", on=["permno", "date"])
-                                              .get(["permno", "date", "size_category", "ret_excess_lead", "log_mktcap", "log_bm", "op", "inv", "ret_excess", "momentum", "volatility"])
+                                              .get(["permno", "date", "size_category", "ret_excess_lead", "log_mktcap", "mktcap", "log_bm", "op", "inv", "ret_excess", "momentum", "volatility"])
                                               .dropna())
 
         if self.drop_tail_percentile is not None:
@@ -79,12 +79,19 @@ class FamaMacbeth:
 
         self.data = data_fama_macbeth
 
-    def run(self) -> pd.DataFrame:
+    def run(self, is_ols=True) -> pd.DataFrame:
 
         # cross-sectional regression
-        formula_string = "ret_excess_lead ~ log_mktcap + log_bm + op + inv + ret_excess + momentum  + volatility"
-        risk_premiums = (self.data.groupby("date").apply(lambda x: smf.ols(formula=formula_string, data=x).fit().params)
-                         .reset_index())
+        """"""
+        if is_ols:
+            formula_string = "ret_excess_lead ~ log_mktcap + log_bm + op + inv + ret_excess + momentum  + volatility"
+            risk_premiums = (self.data.groupby("date").apply(lambda x: smf.ols(formula=formula_string, data=x).fit().params)
+                               .reset_index())
+        else:  # wls
+            formula_string = "ret_excess_lead ~ log_mktcap + log_bm + op + inv + ret_excess + momentum + volatility"
+            risk_premiums = (self.data.groupby("date")
+                             .apply(lambda x: smf.wls(formula=formula_string, data=x, weights=x["mktcap"]).fit().params)
+                             .reset_index())
 
         # time series aggregation
         price_of_risk = (risk_premiums
