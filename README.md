@@ -1,4 +1,4 @@
-## All Factory
+## All Stocks
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -11,7 +11,7 @@
 | **ret_excess** | -5.225      | -12.591                 |
 | **volatility** | -8.450      | -2.015                  |
 
-## Micro Factory
+## Micro Cap Stocks
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -24,7 +24,7 @@
 | **ret_excess** | -5.931 | -13.762 |
 | **volatility** | -9.890 | -2.527  |
 
-## Small Factory
+## Small Stocks
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
@@ -37,7 +37,7 @@
 | **ret_excess** | -2.913 | -6.659 |
 | **volatility** | -10.351 | -1.226  |
 
-## Large Factory
+## Large Stocks
 
 | Factor      | Risk Premium | t-Statistic (Newey-West) |
 |------------|-------------|-------------------------|
